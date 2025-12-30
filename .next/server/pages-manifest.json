@@ -3,7 +3,7 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/": "pages/index.js",
-  "/admin": "pages/admin.js",
   "/profile": "pages/profile.js",
+  "/admin": "pages/admin.js",
   "/api/socketio": "pages/api/socketio.js"
 }
