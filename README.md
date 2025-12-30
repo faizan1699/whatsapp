@@ -1,35 +1,51 @@
-<<<<<<< HEAD
-# whatsapp
-=======
 # Chat App (Next.js + TypeScript + Socket.IO + Supabase)
 
-A starter chat application scaffold using Next.js, TypeScript, Socket.IO for realtime messaging and Supabase for auth and data.
+A starter chat application using Next.js, TypeScript, Socket.IO for real-time messaging, and Supabase for authentication and data.
 
-Features included in this scaffold:
+## Features
 - Next.js + TypeScript
-- Socket.IO API route for realtime messaging
+- Socket.IO API route for real-time messaging
 - Supabase client integration (auth + user profiles)
-- Pages: login, chat, profile, admin
-- Basic WhatsApp-like theme CSS
+- Pages: `login`, `index` (chat), `profile`, `admin`
+- Tailwind CSS for styling
 
-Environment variables (create `.env.local`):
+## Prerequisites
+- Node.js 16+ and npm or yarn
+- A Supabase project (for auth and DB)
 
-NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
-SUPABASE_SERVICE_ROLE_KEY=<optional-service-role-key-for-admin>
+## Environment
+Create a `.env.local` in the project root and add:
 
-Install & run:
+```
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+# (optional) SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+## Setup
+Install dependencies and run the dev server:
 
 ```bash
 npm install
 npm run dev
+# or: yarn && yarn dev
 ```
 
 Open http://localhost:3000
 
-Tailwind
-------
+## Scripts
+- `dev` — run development server
+- `build` — build for production
+- `start` — run production server
 
-Tailwind is configured. After running `npm install`, the Tailwind directives in `styles/globals.css` are processed by PostCSS when Next.js builds.
+## Project structure
+- `components/` — React components (e.g., `ChatBubble.tsx`, `Layout.tsx`)
+- `lib/` — helpers and clients (e.g., `supabaseClient.ts`)
+- `pages/` — Next.js pages and API routes (e.g., `api/socketio.ts`)
+- `styles/` — global CSS and Tailwind setup
 
->>>>>>> 1b7088f (first commit)
+## Notes
+- See `lib/supabaseClient.ts` for how environment variables are referenced.
+
+## Contributing
+PRs and issues welcome. Keep changes focused and well-tested.
