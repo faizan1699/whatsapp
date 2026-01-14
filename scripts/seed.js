@@ -1,4 +1,6 @@
-const { createClient } = '@supabase/supabase-js'
+require('dotenv').config({ path: '.env.local' })
+
+const { createClient } = require('@supabase/supabase-js')
 
 // Create Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -12,7 +14,6 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-// Sample users data
 const sampleUsers = [
   {
     email: 'admin@chatapp.com',
