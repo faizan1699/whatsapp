@@ -7,38 +7,61 @@ interface LoginScreenProps {
   onSignUp: (email: string, password: string, metadata?: { full_name?: string; username?: string }) => Promise<void>
 }
 
+interface FormData {
+  email: string
+  password: string
+  fullName: string
+  username: string
+}
+
 export default function LoginScreen({ onSignIn, onSignUp }: LoginScreenProps) {
   const [isSignUp, setIsSignUp] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
-  const [username, setUsername] = useState('')
+  const [formData, setFormData] = useState<FormData>({
+    email: '',
+    password: '',
+    fullName: '',
+    username: ''
+  })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const handleInputChange = (field: keyof FormData, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+    setError('')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    // Show loading alert
-    const loadingToastId = showLoadingAlert(
-      isSignUp ? 'Creating your account...' : 'Signing in...'
-    )
-
     try {
       if (isSignUp) {
-        await onSignUp(email, password, { full_name: fullName, username })
-        updateAlert(loadingToastId, 'success', 'Account created successfully!')
+        await onSignUp(formData.email, formData.password, {
+          full_name: formData.fullName,
+          username: formData.username
+        })
+        showSuccessAlert('Account created successfully!')
       } else {
-        await onSignIn(email, password)
-        updateAlert(loadingToastId, 'success', 'Signed in successfully!')
+        await onSignIn(formData.email, formData.password)
+        showSuccessAlert('Signed in successfully!')
       }
+      
+      // Reset form
+      setFormData({
+        email: '',
+        password: '',
+        fullName: '',
+        username: ''
+      })
     } catch (err: any) {
       const errorMessage = err.message || 'An error occurred'
       setError(errorMessage)
-      updateAlert(loadingToastId, 'error', errorMessage)
+      showErrorAlert(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -47,10 +70,12 @@ export default function LoginScreen({ onSignIn, onSignUp }: LoginScreenProps) {
   const toggleMode = () => {
     setIsSignUp(!isSignUp)
     setError('')
-    setEmail('')
-    setPassword('')
-    setFullName('')
-    setUsername('')
+    setFormData({
+      email: '',
+      password: '',
+      fullName: '',
+      username: ''
+    })
   }
 
   return (
@@ -58,28 +83,34 @@ export default function LoginScreen({ onSignIn, onSignUp }: LoginScreenProps) {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 text-center">
-          <div className="bg-white rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-            <MessageSquare className="w-8 h-8 text-green-500" />
-          </div>
+          <MessageSquare className="w-8 h-8 text-white mx-auto mb-2" />
           <h1 className="text-2xl font-bold text-white">FChat</h1>
-          <p className="text-green-100 mt-2">
-            {isSignUp ? 'Create your account' : 'Welcome back'}
-          </p>
+          <p className="text-green-100">Connect with friends instantly</p>
         </div>
 
         {/* Form */}
         <div className="p-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+            {isSignUp ? 'Create Account' : 'Welcome Back'}
+          </h2>
+
+          {error && (
+            <div className="bg-red-50 border border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
-              <>
+              <div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Full Name
                   </label>
                   <input
                     type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    value={formData.fullName}
+                    onChange={(e) => handleInputChange('fullName', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                     placeholder="Enter your full name"
                     required
@@ -92,14 +123,14 @@ export default function LoginScreen({ onSignIn, onSignUp }: LoginScreenProps) {
                   </label>
                   <input
                     type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    value={formData.username}
+                    onChange={(e) => handleInputChange('username', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                     placeholder="Choose a username"
                     required
                   />
                 </div>
-              </>
+              </div>
             )}
 
             <div>
@@ -108,8 +139,8 @@ export default function LoginScreen({ onSignIn, onSignUp }: LoginScreenProps) {
               </label>
               <input
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 placeholder="Enter your email"
                 required
@@ -123,8 +154,8 @@ export default function LoginScreen({ onSignIn, onSignUp }: LoginScreenProps) {
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={formData.password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 pr-10"
                   placeholder="Enter your password"
                   required
@@ -139,18 +170,12 @@ export default function LoginScreen({ onSignIn, onSignUp }: LoginScreenProps) {
               </div>
             </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={loading}
               className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {loading ? 'Please wait...' : isSignUp ? 'Sign Up' : 'Sign In'}
+              {loading ? 'Please wait...' : (isSignUp ? 'Sign Up' : 'Sign In')}
             </button>
           </form>
 
@@ -158,13 +183,13 @@ export default function LoginScreen({ onSignIn, onSignUp }: LoginScreenProps) {
           <div className="mt-6 text-center">
             <p className="text-gray-600">
               {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-              <button
-                onClick={toggleMode}
-                className="ml-1 text-green-500 hover:text-green-600 font-medium"
-              >
-                {isSignUp ? 'Sign In' : 'Sign Up'}
-              </button>
             </p>
+            <button
+              onClick={toggleMode}
+              className="text-green-500 hover:text-green-600 font-medium"
+            >
+              {isSignUp ? 'Sign In' : 'Sign Up'}
+            </button>
           </div>
         </div>
       </div>

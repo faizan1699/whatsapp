@@ -1,5 +1,4 @@
 import { Server } from 'socket.io'
-import { NextApiRequest } from 'next'
 
 const SocketHandler = (req: any, res: any) => {
   if (!res.socket.server.io) {
