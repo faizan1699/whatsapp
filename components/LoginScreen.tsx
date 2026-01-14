@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { MessageSquare, Eye, EyeOff } from 'lucide-react'
+import { showSuccessAlert, showErrorAlert, showLoadingAlert, updateAlert, dismissAlert } from '../lib/alerts'
 
 interface LoginScreenProps {
   onSignIn: (email: string, password: string) => Promise<void>
@@ -21,14 +22,23 @@ export default function LoginScreen({ onSignIn, onSignUp }: LoginScreenProps) {
     setLoading(true)
     setError('')
 
+    // Show loading alert
+    const loadingToastId = showLoadingAlert(
+      isSignUp ? 'Creating your account...' : 'Signing in...'
+    )
+
     try {
       if (isSignUp) {
         await onSignUp(email, password, { full_name: fullName, username })
+        updateAlert(loadingToastId, 'success', 'Account created successfully!')
       } else {
         await onSignIn(email, password)
+        updateAlert(loadingToastId, 'success', 'Signed in successfully!')
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred')
+      const errorMessage = err.message || 'An error occurred'
+      setError(errorMessage)
+      updateAlert(loadingToastId, 'error', errorMessage)
     } finally {
       setLoading(false)
     }

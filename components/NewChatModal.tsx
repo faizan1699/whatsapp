@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { X, Search, Users, UserPlus } from 'lucide-react'
+import { showSuccessAlert, showErrorAlert, showLoadingAlert, updateAlert } from '../lib/alerts'
 
 interface User {
   id: string
@@ -65,13 +66,19 @@ export default function NewChatModal({ isOpen, onClose, onCreateChat, searchUser
     if (selectedUsers.length === 0) return
     if (mode === 'group' && !groupName.trim()) return
 
+    const loadingToastId = showLoadingAlert('Creating chat...')
+
     try {
       setCreating(true)
       const userIds = selectedUsers.map(u => u.id)
       await onCreateChat(userIds, mode === 'group', mode === 'group' ? groupName : undefined)
+      
+      const chatType = mode === 'group' ? 'group chat' : 'direct chat'
+      updateAlert(loadingToastId, 'success', `${chatType.charAt(0).toUpperCase() + chatType.slice(1)} created successfully!`)
       handleClose()
     } catch (error) {
-      console.error('Create chat error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create chat'
+      updateAlert(loadingToastId, 'error', errorMessage)
     } finally {
       setCreating(false)
     }

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { supabase } from './supabaseClient';
+import { handleApiError, handleApiSuccess } from './alerts';
 
 // API base configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
@@ -24,9 +25,16 @@ api.interceptors.request.use(async (config) => {
 
 // Response interceptor for error handling
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Show success message for successful operations (POST, PUT, DELETE)
+    if (response.config.method && ['post', 'put', 'delete'].includes(response.config.method.toLowerCase())) {
+      const message = response.data?.message || 'Operation completed successfully';
+      handleApiSuccess(message, response.data);
+    }
+    return response;
+  },
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    handleApiError(error);
     return Promise.reject(error);
   }
 );
