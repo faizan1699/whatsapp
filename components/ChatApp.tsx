@@ -12,7 +12,7 @@ import LoginScreen from './LoginScreen'
 export default function ChatApp() {
   const { user, loading: authLoading, signIn, signUp } = useAuth()
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
-  const [showNewChatModal, setShowNewChatModal] = useState(false)
+  const [showNewChatModal, setShowNewChatModal] = useState<boolean>(false)
   const [chatMode, setChatMode] = useState<'direct' | 'group'>('direct')
 
   const { conversations, loading: conversationsLoading, createConversation, getOrCreateDirectConversation } = useConversations({
@@ -140,6 +140,7 @@ export default function ChatApp() {
         onClose={() => setShowNewChatModal(false)}
         onCreateChat={handleCreateChat}
         searchUsers={searchUsers}
+        currentUserId={user?.id}
       />
 
       {/* Mobile Back Button */}

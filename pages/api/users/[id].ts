@@ -1,192 +1,45 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { createServerSupabaseClient } from '../../../lib/supabaseServer'
+import { AuthenticatedRequest, withAuth } from '../../../lib/middleware'
 
 const supabase = createServerSupabaseClient()
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { method } = req
-  const { id } = req.query
+async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
+  if (req.method === 'GET') {
+    try {
+      const { select, id } = req.query
 
-  if (!id || typeof id !== 'string') {
-    return res.status(400).json({
-      success: false,
-      error: 'Valid user ID is required'
-    })
-  }
-
-  try {
-    switch (method) {
-      case 'GET':
-        return handleGet(id as string, res)
-      case 'PUT':
-        return handlePut(id as string, req, res)
-      case 'DELETE':
-        return handleDelete(id as string, res)
-      default:
-        res.setHeader('Allow', ['GET', 'PUT', 'DELETE'])
-        return res.status(405).json({ error: `Method ${method} Not Allowed` })
-    }
-  } catch (error) {
-    console.error('API Error:', error)
-    return res.status(500).json({ 
-      error: 'Internal Server Error',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    })
-  }
-}
-
-// GET /api/users/[id] - Get single user
-async function handleGet(id: string, res: NextApiResponse) {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', id)
-      .single()
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return res.status(404).json({
-          success: false,
-          error: 'User not found'
-        })
+      if (!id) {
+        return res.status(400).json({ error: 'User ID is required' })
       }
-      throw error
-    }
 
-    return res.status(200).json({
-      success: true,
-      data
-    })
-  } catch (error) {
-    console.error('GET user error:', error)
-    return res.status(500).json({ 
-      success: false,
-      error: 'Failed to fetch user',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    })
-  }
-}
-
-// PUT /api/users/[id] - Update single user
-async function handlePut(id: string, req: NextApiRequest, res: NextApiResponse) {
-  try {
-    const { full_name, username, phone } = req.body
-
-    // Validate required fields
-    if (!full_name || !username) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields',
-        required: ['full_name', 'username']
-      })
-    }
-
-    // Check if user exists
-    const { data: existingUser, error: fetchError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', id)
-      .single()
-
-    if (fetchError || !existingUser) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      })
-    }
-
-    // Check if username is being changed and if it's already taken
-    if (username !== existingUser.username) {
-      const { data: usernameCheck } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
-        .select('username')
-        .eq('username', username)
-        .neq('id', id)
+        .select(select ? String(select) : '*')
+        .eq('id', String(id))
         .single()
 
-      if (usernameCheck) {
-        return res.status(409).json({
-          success: false,
-          error: 'Username already exists'
-        })
+      if (error) {
+        console.error('Error fetching profile:', error)
+        if (error.code === 'PGRST116') {
+          return res.status(404).json({ error: 'Profile not found' })
+        }
+        return res.status(500).json({ error: error.message })
       }
+
+      if (!data) {
+        return res.status(404).json({ error: 'Profile not found' })
+      }
+
+      return res.status(200).json(data)
+    } catch (error) {
+      console.error('Unexpected error fetching profile:', error)
+      return res.status(500).json({ error: 'Internal server error' })
     }
-
-    // Update user
-    const { data: updatedUser, error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        full_name,
-        username,
-        phone: phone || null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (updateError) {
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to update user',
-        details: updateError.message
-      })
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: updatedUser,
-      message: 'User updated successfully'
-    })
-  } catch (error) {
-    console.error('PUT user error:', error)
-    return res.status(500).json({ 
-      success: false,
-      error: 'Failed to update user',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    })
+  } else {
+    res.setHeader('Allow', ['GET'])
+    res.status(405).end(`Method ${req.method} Not Allowed`)
   }
 }
 
-// DELETE /api/users/[id] - Delete single user
-async function handleDelete(id: string, res: NextApiResponse) {
-  try {
-    // Check if user exists
-    const { data: existingUser, error: fetchError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', id)
-      .single()
-
-    if (fetchError || !existingUser) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      })
-    }
-
-    // Delete from auth (this will cascade delete profile)
-    const { error: deleteError } = await supabase.auth.admin.deleteUser(id)
-
-    if (deleteError) {
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to delete user',
-        details: deleteError.message
-      })
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: 'User deleted successfully'
-    })
-  } catch (error) {
-    console.error('DELETE user error:', error)
-    return res.status(500).json({ 
-      success: false,
-      error: 'Failed to delete user',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    })
-  }
-}
+export default withAuth(handler)

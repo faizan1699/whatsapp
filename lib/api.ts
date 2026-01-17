@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 import { handleApiError, handleApiSuccess } from './alerts';
 
 // API base configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 // Create axios instance
 const api = axios.create({
@@ -137,61 +137,75 @@ export const apiClient = {
 
   // Profiles
   async getProfile(userId: string): Promise<User | null> {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
+    try {
+      const response = await api.get(`/users/${userId}?select=*`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) return null;
+      throw error;
+    }
   },
 
   async updateProfile(userId: string, updates: Partial<User>) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    const response = await api.put(`/users/${userId}`, {
+      ...updates,
+      source: 'profiles'
+    });
+    return response.data.data;
   },
 
   async searchUsers(query: string): Promise<User[]> {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .or(`username.ilike.%${query}%,full_name.ilike.%${query}%,email.ilike.%${query}%`)
-      .limit(20);
+    const response = await api.get('/users', {
+      params: {
+        search: query,
+        limit: 20,
+        source: 'profiles'
+      }
+    });
+    return response.data.data || [];
+  },
+
+  async searchUsersAll(query: string): Promise<User[]> {
+    // Search both profiles and users tables
+    const [profilesResponse, usersResponse] = await Promise.all([
+      api.get('/users', {
+        params: {
+          search: query,
+          limit: 20,
+          source: 'profiles'
+        }
+      }),
+      api.get('/users', {
+        params: {
+          search: query,
+          limit: 20,
+          source: 'users'
+        }
+      })
+    ]);
+
+    const profiles = profilesResponse.data.data || [];
+    const users = usersResponse.data.data || [];
     
-    if (error) throw error;
-    return data || [];
+    // Combine and remove duplicates
+    const allUsers = [...profiles, ...users];
+    const uniqueUsers = allUsers.filter((user, index, self) => 
+      index === self.findIndex((u) => u.id === user.id)
+    );
+    
+    return uniqueUsers;
   },
 
   // Conversations
   async getConversations(userId: string): Promise<Conversation[]> {
-    const { data, error } = await supabase
-      .from('conversation_participants')
-      .select(`
-        conversation_id,
-        conversations!inner(
-          id,
-          name,
-          is_group,
-          avatar_url,
-          created_by,
-          created_at,
-          updated_at
-        )
-      `)
-      .eq('user_id', userId)
-      .order('conversations(updated_at)', { ascending: false });
+    const response = await api.get('/conversation_participants', {
+      params: {
+        user_id: userId,
+        select: 'conversation_id,conversations!inner(id,name,is_group,avatar_url,created_by,created_at,updated_at)'
+      }
+    });
     
-    if (error) throw error;
-    
-    const conversations = data?.map((item: any) => ({
+    const conversations = response.data?.map((item: any) => ({
       ...item.conversations,
       participants: undefined // Will be fetched separately
     })) || [];
@@ -200,20 +214,15 @@ export const apiClient = {
   },
 
   async getConversation(conversationId: string): Promise<Conversation | null> {
-    const { data, error } = await supabase
-      .from('conversations')
-      .select(`
-        *,
-        conversation_participants(
-          *,
-          user:profiles(*)
-        )
-      `)
-      .eq('id', conversationId)
-      .single();
+    const response = await api.get('/conversations', {
+      params: {
+        id: conversationId,
+        select: '*,conversation_participants(*,user:profiles(*))'
+      }
+    });
     
-    if (error && error.code !== 'PGRST116') throw error;
-    return data;
+    const conversations = response.data?.data || [];
+    return conversations.length > 0 ? conversations[0] : null;
   },
 
   async createConversation(name: string, isGroup: boolean, participantIds: string[]): Promise<Conversation> {

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { X, Search, Users, UserPlus } from 'lucide-react'
+import { useDebounce } from 'use-debounce'
 import { showSuccessAlert, showErrorAlert, showLoadingAlert, updateAlert } from '../lib/alerts'
 
 interface User {
@@ -15,9 +16,10 @@ interface NewChatModalProps {
   onClose: () => void
   onCreateChat: (userIds: string[], isGroup: boolean, groupName?: string) => Promise<void>
   searchUsers: (query: string) => Promise<User[]>
+  currentUserId?: string
 }
 
-export default function NewChatModal({ isOpen, onClose, onCreateChat, searchUsers }: NewChatModalProps) {
+export default function NewChatModal({ isOpen, onClose, onCreateChat, searchUsers, currentUserId }: NewChatModalProps) {
   const [mode, setMode] = useState<'direct' | 'group'>('direct')
   const [groupName, setGroupName] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -26,27 +28,33 @@ export default function NewChatModal({ isOpen, onClose, onCreateChat, searchUser
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
 
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      handleSearch()
-    } else {
-      setSearchResults([])
-    }
-  }, [searchQuery])
+  const debouncedSearchQuery = useDebounce(searchQuery, 300)
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return
+  const handleSearch = useCallback(async () => {
+    const query = typeof debouncedSearchQuery === 'string' ? debouncedSearchQuery : ''
+    console.log('Searching for:', query) // Debug log
+    if (!query.trim()) return
     
     try {
       setLoading(true)
-      const results = await searchUsers(searchQuery)
+      const results = await searchUsers(query)
+      console.log('Search results:', results) // Debug log
       setSearchResults(results.filter(user => user.id !== selectedUsers.find(u => u.id === user.id)?.id))
     } catch (error) {
       console.error('Search error:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [debouncedSearchQuery, searchUsers, selectedUsers])
+
+  useEffect(() => {
+    const query = typeof debouncedSearchQuery === 'string' ? debouncedSearchQuery : ''
+    if (query.trim()) {
+      handleSearch()
+    } else {
+      setSearchResults([])
+    }
+  }, [debouncedSearchQuery, handleSearch])
 
   const handleSelectUser = (user: User) => {
     if (mode === 'direct') {
@@ -209,6 +217,9 @@ export default function NewChatModal({ isOpen, onClose, onCreateChat, searchUser
                   <div className="flex-1">
                     <div className="font-medium text-gray-800">
                       {user.full_name || user.username || 'Unknown User'}
+                      {user.id === currentUserId && (
+                        <span className="ml-2 text-sm text-gray-500">(you)</span>
+                      )}
                     </div>
                     {user.email && (
                       <div className="text-sm text-gray-500">{user.email}</div>

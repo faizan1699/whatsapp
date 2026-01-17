@@ -53,7 +53,7 @@ export const useProfile = (params: UseProfileParams = {}): UseProfileReturn => {
   const searchUsers = useCallback(async (query: string) => {
     try {
       setError(null);
-      const users = await apiClient.searchUsers(query);
+      const users = await apiClient.searchUsersAll(query);
       return users;
     } catch (err: any) {
       setError(err.message);
